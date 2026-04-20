@@ -38,7 +38,7 @@
     <div class="card-header">
       <span><span class="dot" id="dot"></span>Device Feed</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <button id="auto-btn" onclick="toggleAuto()" style="background:#6b7280">Auto 30s</button>
+        <button id="auto-btn" onclick="toggleAuto()" style="background:#6b7280">Auto 15s</button>
         <button id="btn" onclick="runNow()">Run Now</button>
       </div>
     </div>
@@ -107,11 +107,11 @@
       if (autoTimer) {
         clearInterval(autoTimer);
         autoTimer = null;
-        btn.textContent = 'Auto 30s';
+        btn.textContent = 'Auto 15s';
         btn.style.background = '#6b7280';
       } else {
         runNow();
-        autoTimer = setInterval(runNow, 30000);
+        autoTimer = setInterval(runNow, 15000);
         btn.textContent = 'Stop Auto';
         btn.style.background = '#dc2626';
       }
