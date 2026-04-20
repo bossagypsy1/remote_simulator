@@ -19,6 +19,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       source_device_id: string | null;
       processing_status: string;
       simulator_source: string | null;
+      readings_detail: { name: string; value: number | null; text: string | null }[] | null;
     }[] = await r.json();
 
     // Only care about simulator-sent rows (vercel-cron or local-cli)
@@ -26,14 +27,14 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       (row) => row.simulator_source === 'vercel-cron' || row.simulator_source === 'local-cli',
     );
 
-    // Latest row per device
+    // Latest row per device (feed is newest-first)
     const byDevice: Record<string, typeof simRows[0]> = {};
     for (const row of simRows) {
       const dev = row.source_device_id ?? 'unknown';
-      if (!byDevice[dev]) byDevice[dev] = row; // feed is newest-first
+      if (!byDevice[dev]) byDevice[dev] = row;
     }
 
-    // Latest cron-only run time
+    // Latest cron-only trigger time
     const cronRows = feed.filter((r) => r.simulator_source === 'vercel-cron');
     const lastCron = cronRows.length > 0 ? cronRows[0].received_at : null;
 
