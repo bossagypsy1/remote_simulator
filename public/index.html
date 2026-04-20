@@ -1,7 +1,103 @@
 <!DOCTYPE html>
-<html>
-<head><title>Remote Simulator</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Simulator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #333; padding: 32px; }
+    h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
+    p.sub { font-size: 0.8rem; color: #888; margin-bottom: 24px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; max-width: 560px; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+    .card-header span { font-size: 0.8rem; font-weight: 500; color: #555; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; display: inline-block; margin-right: 8px; }
+    .dot.ok { background: #22c55e; }
+    .dot.error { background: #ef4444; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    td { padding: 8px 16px; border-bottom: 1px solid #f9fafb; }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { color: #555; font-family: monospace; }
+    td:last-child { text-align: right; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 500; }
+    .badge.ok    { background: #f0fdf4; color: #16a34a; }
+    .badge.error { background: #fef2f2; color: #dc2626; }
+    .badge.wait  { background: #f9fafb; color: #9ca3af; }
+    .footer { padding: 10px 16px; border-top: 1px solid #f0f0f0; font-size: 0.72rem; color: #aaa; display: flex; justify-content: space-between; }
+    button { font-size: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #93c5fd; cursor: default; }
+  </style>
+</head>
 <body>
-<p>Simulator API — use <a href="/api/simulate">/api/simulate</a></p>
+  <h1>Remote Simulator</h1>
+  <p class="sub">Triggered by cron-job.org → sends to ingest server</p>
+
+  <div class="card">
+    <div class="card-header">
+      <span><span class="dot" id="dot"></span>Device Feed</span>
+      <button id="btn" onclick="runNow()">Run Now</button>
+    </div>
+    <table id="table">
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="footer">
+      <span id="last">Not run yet</span>
+      <span id="summary"></span>
+    </div>
+  </div>
+
+  <script>
+    const DEVICES = [
+      'env-001','env-002','env-003','env-004','env-005','env-006','phone-001'
+    ];
+
+    function renderWaiting() {
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = DEVICES.map(d => `
+        <tr>
+          <td>${d}</td>
+          <td><span class="badge wait">waiting</span></td>
+        </tr>`).join('');
+    }
+
+    function renderResults(results) {
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = results.map(r => `
+        <tr>
+          <td>${r.device}</td>
+          <td><span class="badge ${r.ok ? 'ok' : 'error'}">${r.ok ? 'sent ' + r.status : 'error ' + r.status}</span></td>
+        </tr>`).join('');
+    }
+
+    async function runNow() {
+      const btn = document.getElementById('btn');
+      const dot = document.getElementById('dot');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      dot.className = 'dot';
+      renderWaiting();
+
+      try {
+        const res = await fetch('/api/simulate');
+        const data = await res.json();
+        renderResults(data.results ?? []);
+        const ok = (data.results ?? []).filter(r => r.ok).length;
+        const total = (data.results ?? []).length;
+        dot.className = ok === total ? 'dot ok' : 'dot error';
+        document.getElementById('summary').textContent = `${ok}/${total} ok`;
+        document.getElementById('last').textContent = 'Last run: ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        dot.className = 'dot error';
+        document.getElementById('last').textContent = 'Error: ' + e.message;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Run Now';
+    }
+
+    renderWaiting();
+  </script>
 </body>
 </html>
