@@ -4,6 +4,9 @@
   "functions": {
     "api/simulate.ts": {
       "maxDuration": 30
+    },
+    "api/last-run.ts": {
+      "maxDuration": 10
     }
   }
 }

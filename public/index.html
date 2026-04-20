@@ -9,7 +9,7 @@
     body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #333; padding: 32px; }
     h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
     p.sub { font-size: 0.8rem; color: #888; margin-bottom: 24px; }
-    .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; max-width: 560px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; max-width: 600px; margin-bottom: 16px; }
     .card-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
     .card-header span { font-size: 0.8rem; font-weight: 500; color: #555; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; display: inline-block; margin-right: 8px; }
@@ -19,35 +19,78 @@
     td { padding: 8px 16px; border-bottom: 1px solid #f9fafb; }
     tr:last-child td { border-bottom: none; }
     td:first-child { color: #555; font-family: monospace; }
-    td:last-child { text-align: right; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 500; }
-    .badge.ok    { background: #f0fdf4; color: #16a34a; }
-    .badge.error { background: #fef2f2; color: #dc2626; }
-    .badge.wait  { background: #f9fafb; color: #9ca3af; }
+    .badge.ok     { background: #f0fdf4; color: #16a34a; }
+    .badge.error  { background: #fef2f2; color: #dc2626; }
+    .badge.wait   { background: #f9fafb; color: #9ca3af; }
+    .badge.cron   { background: #faf5ff; color: #7c3aed; }
+    .badge.local  { background: #fefce8; color: #92400e; }
+    .source-col { text-align: center; }
+    .time-col   { text-align: right; font-family: monospace; color: #888; }
     .footer { padding: 10px 16px; border-top: 1px solid #f0f0f0; font-size: 0.72rem; color: #aaa; display: flex; justify-content: space-between; }
     button { font-size: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #93c5fd; cursor: default; }
+    .section-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; color: #aaa; padding: 6px 16px 2px; }
+    th { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; color: #aaa;
+         padding: 6px 16px; background: #fafafa; border-bottom: 1px solid #f0f0f0; text-align: left; font-weight: 500; }
+    th.right { text-align: right; }
+    .flash { animation: flashbg 1.2s ease-out; }
+    @keyframes flashbg { 0% { background:#f0fdf4; } 100% { background:white; } }
   </style>
 </head>
 <body>
   <h1>Remote Simulator</h1>
   <p class="sub">Triggered by cron-job.org → sends to ingest server</p>
 
+  <!-- Manual send card -->
   <div class="card">
     <div class="card-header">
-      <span><span class="dot" id="dot"></span>Device Feed</span>
+      <span><span class="dot" id="dot"></span>Manual Send</span>
       <div style="display:flex;gap:8px;align-items:center">
         <button id="auto-btn" onclick="toggleAuto()" style="background:#6b7280">Auto 15s</button>
         <button id="btn" onclick="runNow()">Run Now</button>
       </div>
     </div>
     <table id="table">
-      <tbody id="rows"></tbody>
+      <thead>
+        <tr>
+          <th>Device</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <!-- filled by renderWaiting() -->
+      </tbody>
     </table>
     <div class="footer">
       <span id="last">Not run yet</span>
       <span id="summary"></span>
+    </div>
+  </div>
+
+  <!-- Live cron feed card -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="dot ok" id="feed-dot"></span>Live Cron Feed</span>
+      <span style="font-size:0.7rem;color:#aaa" id="feed-updated">polling…</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Device</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th class="right">Received</th>
+        </tr>
+      </thead>
+      <tbody id="feed-rows">
+        <tr><td colspan="4" style="color:#aaa;text-align:center;padding:16px">Loading…</td></tr>
+      </tbody>
+    </table>
+    <div class="footer">
+      <span>Last cron: <span id="last-cron">—</span></span>
+      <span id="feed-count"></span>
     </div>
   </div>
 
@@ -56,9 +99,9 @@
       'env-001','env-002','env-003','env-004','env-005','env-006','phone-001'
     ];
 
+    /* ── Manual send ── */
     function renderWaiting() {
-      const tbody = document.getElementById('rows');
-      tbody.innerHTML = DEVICES.map(d => `
+      document.getElementById('rows').innerHTML = DEVICES.map(d => `
         <tr>
           <td>${d}</td>
           <td><span class="badge wait">waiting</span></td>
@@ -66,8 +109,7 @@
     }
 
     function renderResults(results) {
-      const tbody = document.getElementById('rows');
-      tbody.innerHTML = results.map(r => `
+      document.getElementById('rows').innerHTML = results.map(r => `
         <tr>
           <td>${r.device}</td>
           <td><span class="badge ${r.ok ? 'ok' : 'error'}">${r.ok ? 'sent ' + r.status : 'error ' + r.status}</span></td>
@@ -83,10 +125,10 @@
       renderWaiting();
 
       try {
-        const res = await fetch('/api/simulate');
+        const res  = await fetch('/api/simulate');
         const data = await res.json();
         renderResults(data.results ?? []);
-        const ok = (data.results ?? []).filter(r => r.ok).length;
+        const ok    = (data.results ?? []).filter(r => r.ok).length;
         const total = (data.results ?? []).length;
         dot.className = ok === total ? 'dot ok' : 'dot error';
         document.getElementById('summary').textContent = `${ok}/${total} ok`;
@@ -101,7 +143,6 @@
     }
 
     let autoTimer = null;
-
     function toggleAuto() {
       const btn = document.getElementById('auto-btn');
       if (autoTimer) {
@@ -117,7 +158,69 @@
       }
     }
 
+    /* ── Live cron feed ── */
+    let prevTopId = null;
+
+    async function pollFeed() {
+      try {
+        const res  = await fetch('/api/last-run');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const { byDevice, lastCron, totalSim } = data;
+
+        // Update last cron time
+        document.getElementById('last-cron').textContent =
+          lastCron ? new Date(lastCron).toLocaleTimeString() : '—';
+        document.getElementById('feed-count').textContent =
+          totalSim != null ? `${totalSim} total sim rows` : '';
+        document.getElementById('feed-updated').textContent =
+          'updated ' + new Date().toLocaleTimeString();
+
+        // Build rows — one per known device
+        const tbody = document.getElementById('feed-rows');
+        tbody.innerHTML = DEVICES.map(dev => {
+          const row = byDevice[dev];
+          if (!row) {
+            return `<tr>
+              <td>${dev}</td>
+              <td class="source-col">—</td>
+              <td><span class="badge wait">no data</span></td>
+              <td class="time-col">—</td>
+            </tr>`;
+          }
+          const src    = row.simulator_source;
+          const srcBadge = src === 'vercel-cron'
+            ? '<span class="badge cron">cron</span>'
+            : src === 'local-cli'
+            ? '<span class="badge local">local</span>'
+            : '—';
+          const status = row.processing_status;
+          const statusClass = status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'wait';
+          const time   = new Date(row.received_at).toLocaleTimeString();
+          const age    = Math.round((Date.now() - new Date(row.received_at).getTime()) / 1000);
+          const ageStr = age < 60 ? `${age}s ago` : `${Math.round(age/60)}m ago`;
+
+          // Flash if this is brand new (age < 6 s)
+          const flashClass = age < 6 ? 'flash' : '';
+
+          return `<tr class="${flashClass}">
+            <td>${dev}</td>
+            <td class="source-col">${srcBadge}</td>
+            <td><span class="badge ${statusClass}">${status}</span></td>
+            <td class="time-col">${time} <span style="color:#ccc">(${ageStr})</span></td>
+          </tr>`;
+        }).join('');
+
+      } catch {
+        // silently retry
+      }
+    }
+
+    /* ── Boot ── */
     renderWaiting();
+    pollFeed();
+    setInterval(pollFeed, 5000);
   </script>
 </body>
 </html>
