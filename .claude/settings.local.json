@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(INGEST_URL=http://127.0.0.1:9009/ingest npm run dev -- --device env-001 --count 1)",
+      "Bash(INGEST_URL=http://127.0.0.1:9009/ingest npm run dev -- --all --count 2 --interval 2000)",
+      "Bash(INGEST_URL=http://127.0.0.1:9009/ingest npm run dev -- --all)",
+      "Bash(start cmd *)",
+      "Bash(powershell -command \"Start-Process cmd -ArgumentList '/k C:\\\\Users\\\\zebedee\\\\Desktop\\\\claud\\\\remote_simulator\\\\run.bat'\")",
+      "Bash(INGEST_URL=http://localhost:9009/api/ingest npm run dev -- --all --count 1 --dry-run)"
+    ]
+  }
+}
