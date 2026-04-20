@@ -105,7 +105,7 @@ async function pushEnvironmental(
   if (opts.verbose) console.log(JSON.stringify(payload, null, 2));
 
   try {
-    const result    = await sendPayload(ingestUrl, payload);
+    const result    = await sendPayload(ingestUrl, payload, 'local-cli');
     const statusStr = `${result.status} ${result.statusText}`;
 
     if (result.ok) {
@@ -139,7 +139,7 @@ async function pushPhone(opts: CliOptions, mobileUrl: string, baseUrl: string): 
   if (opts.verbose) console.log(JSON.stringify(payload, null, 2));
 
   try {
-    const result    = await sendPayload(mobileUrl, payload);
+    const result    = await sendPayload(mobileUrl, payload, 'local-cli');
     const statusStr = `${result.status} ${result.statusText}`;
 
     if (result.ok) {

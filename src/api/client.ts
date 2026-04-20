@@ -5,10 +5,13 @@ export interface SendResult {
   body: string;
 }
 
-export async function sendPayload(url: string, payload: unknown): Promise<SendResult> {
+export async function sendPayload(url: string, payload: unknown, source?: string): Promise<SendResult> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(source ? { 'X-Simulator-Source': source } : {}),
+    },
     body: JSON.stringify(payload),
   });
 

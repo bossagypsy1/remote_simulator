@@ -24,12 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   for (const device of devices) {
     const payload = generateEnvironmentalPayload(device, nextId(device.deviceId));
-    const result  = await sendPayload(ingestUrl, payload);
+    const result  = await sendPayload(ingestUrl, payload, 'vercel-cron');
     results.push({ device: device.deviceId, ok: result.ok, status: result.status });
   }
 
   const phonePayload = generatePhonePayload(phone, nextId(phone.deviceId), SESSION_ID);
-  const phoneResult  = await sendPayload(mobileUrl, phonePayload);
+  const phoneResult  = await sendPayload(mobileUrl, phonePayload, 'vercel-cron');
   results.push({ device: phone.deviceId, ok: phoneResult.ok, status: phoneResult.status });
 
   const succeeded = results.filter(r => r.ok).length;
