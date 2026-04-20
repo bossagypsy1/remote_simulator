@@ -14,16 +14,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Optional secret check
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = (req.headers['authorization'] as string) ?? '';
-    const qs   = (req.query['secret'] as string) ?? '';
-    if (auth !== `Bearer ${secret}` && qs !== secret) {
-      return res.status(401).json({ error: 'Unauthorised' });
-    }
-  }
-
   const baseUrl   = (process.env.INGEST_URL ?? '').replace(/\/$/, '').replace(/\/(environmental|mobile_phone)$/, '');
   const ingestUrl = `${baseUrl}/environmental`;
   const mobileUrl = `${baseUrl}/mobile_phone`;
