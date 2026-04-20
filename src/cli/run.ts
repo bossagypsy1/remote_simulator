@@ -158,16 +158,16 @@ async function pushPhone(opts: CliOptions, mobileUrl: string, baseUrl: string): 
 
 // ── Main entry point ─────────────────────────────────────────────────────────
 
-type DeviceEntry = { id: string; type: 'environmental' | 'phone' };
+type DeviceEntry = { id: string; type: 'miketron-device' | 'phone' };
 
-const allEnvDevices: DeviceEntry[] = devices.map((d) => ({ id: d.deviceId, type: 'environmental' }));
+const allEnvDevices: DeviceEntry[] = devices.map((d) => ({ id: d.deviceId, type: 'miketron-device' }));
 const phoneEntry: DeviceEntry      = { id: phone.deviceId, type: 'phone' };
 const allDeviceIds                 = [...devices.map((d) => d.deviceId), phone.deviceId];
 
 export async function run(): Promise<void> {
   const opts      = parseArgs();
   const baseUrl   = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '');
-  const ingestUrl = `${baseUrl}/environmental`;
+  const ingestUrl = `${baseUrl}/miketron-device`;
   const mobileUrl = `${baseUrl}/mobile_phone`;
 
   // Resolve target device list
@@ -182,7 +182,7 @@ export async function run(): Promise<void> {
       console.error(`Error: unknown device "${opts.device}". Valid IDs: ${allDeviceIds.join(', ')}`);
       process.exit(1);
     }
-    targetDevices = [{ id: opts.device, type: 'environmental' }];
+    targetDevices = [{ id: opts.device, type: 'miketron-device' }];
   } else {
     console.error(`Error: specify --device <id> or --all. Valid IDs: ${allDeviceIds.join(', ')}`);
     process.exit(1);

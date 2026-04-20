@@ -18,8 +18,8 @@ import { generatePhonePayload } from '../payloads/mobile_phone';
 import { sendPayload } from '../api/client';
 
 const PORT        = parseInt(process.env.PORT ?? '3001', 10);
-const BASE_URL    = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '').replace(/\/environmental$/, '').replace(/\/mobile_phone$/, '');
-const SEND_TO_URL  = `${BASE_URL}/environmental`;
+const BASE_URL    = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '').replace(/\/miketron-device$/, '').replace(/\/mobile_phone$/, '');
+const SEND_TO_URL  = `${BASE_URL}/miketron-device`;
 const MOBILE_URL  = `${BASE_URL}/mobile_phone`;
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
 

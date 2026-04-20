@@ -5,7 +5,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   if (!sendTo) return res.status(500).json({ error: 'SEND_TO_URL not set' });
 
   // Derive dashboard base from the ingest URL
-  // e.g. https://remote-sensor-phone.vercel.app/api/ingest/environmental
+  // e.g. https://remote-sensor-phone.vercel.app/api/ingest/miketron-device
   //   →  https://remote-sensor-phone.vercel.app
   const base = sendTo.replace(/\/api\/ingest.*$/, '');
 
