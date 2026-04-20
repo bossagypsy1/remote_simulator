@@ -37,7 +37,10 @@
   <div class="card">
     <div class="card-header">
       <span><span class="dot" id="dot"></span>Device Feed</span>
-      <button id="btn" onclick="runNow()">Run Now</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="auto-btn" onclick="toggleAuto()" style="background:#6b7280">Auto 30s</button>
+        <button id="btn" onclick="runNow()">Run Now</button>
+      </div>
     </div>
     <table id="table">
       <tbody id="rows"></tbody>
@@ -95,6 +98,23 @@
 
       btn.disabled = false;
       btn.textContent = 'Run Now';
+    }
+
+    let autoTimer = null;
+
+    function toggleAuto() {
+      const btn = document.getElementById('auto-btn');
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+        btn.textContent = 'Auto 30s';
+        btn.style.background = '#6b7280';
+      } else {
+        runNow();
+        autoTimer = setInterval(runNow, 30000);
+        btn.textContent = 'Stop Auto';
+        btn.style.background = '#dc2626';
+      }
     }
 
     renderWaiting();
