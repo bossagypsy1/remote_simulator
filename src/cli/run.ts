@@ -166,7 +166,7 @@ const allDeviceIds                 = [...devices.map((d) => d.deviceId), phone.d
 
 export async function run(): Promise<void> {
   const opts      = parseArgs();
-  const baseUrl   = (process.env.INGEST_URL ?? '').replace(/\/$/, '');
+  const baseUrl   = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '');
   const ingestUrl = `${baseUrl}/environmental`;
   const mobileUrl = `${baseUrl}/mobile_phone`;
 
@@ -190,7 +190,7 @@ export async function run(): Promise<void> {
 
   // Validate required env vars (skipped in dry-run)
   if (!opts.dryRun && !baseUrl) {
-    console.error('Error: INGEST_URL is not set. Copy .env.example to .env and set the value.');
+    console.error('Error: SEND_TO_URL is not set. Copy .env.example to .env and set the value.');
     process.exit(1);
   }
 

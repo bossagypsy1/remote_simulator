@@ -3,10 +3,10 @@
  * -------------------
  * Listens for GET /simulate from cron-job.org.
  * On each call it generates one round of payloads for every device
- * and POSTs them to the configured INGEST_URL.
+ * and POSTs them to the configured SEND_TO_URL.
  *
  * Deploy anywhere that runs a persistent Node process (Railway, Render, Fly.io…).
- * Set env vars:  INGEST_URL, PORT (optional, default 3001), CRON_SECRET (optional).
+ * Set env vars:  SEND_TO_URL, PORT (optional, default 3001), CRON_SECRET (optional).
  */
 
 import 'dotenv/config';
@@ -18,8 +18,8 @@ import { generatePhonePayload } from '../payloads/mobile_phone';
 import { sendPayload } from '../api/client';
 
 const PORT        = parseInt(process.env.PORT ?? '3001', 10);
-const BASE_URL    = (process.env.INGEST_URL ?? '').replace(/\/$/, '').replace(/\/environmental$/, '').replace(/\/mobile_phone$/, '');
-const INGEST_URL  = `${BASE_URL}/environmental`;
+const BASE_URL    = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '').replace(/\/environmental$/, '').replace(/\/mobile_phone$/, '');
+const SEND_TO_URL  = `${BASE_URL}/environmental`;
 const MOBILE_URL  = `${BASE_URL}/mobile_phone`;
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
 
@@ -43,7 +43,7 @@ async function simulate(): Promise<{ device: string; ok: boolean; status: number
 
   for (const device of devices) {
     const payload = generateEnvironmentalPayload(device, nextId(device.deviceId));
-    const result  = await sendPayload(INGEST_URL, payload);
+    const result  = await sendPayload(SEND_TO_URL, payload);
     console.log(`[${ts()}] ${device.deviceId} -> ${result.status} ${result.statusText}`);
     results.push({ device: device.deviceId, ok: result.ok, status: result.status });
   }

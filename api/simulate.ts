@@ -14,11 +14,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const baseUrl   = (process.env.INGEST_URL ?? '').replace(/\/$/, '').replace(/\/(environmental|mobile_phone)$/, '');
+  const baseUrl   = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '').replace(/\/(environmental|mobile_phone)$/, '');
   const ingestUrl = `${baseUrl}/environmental`;
   const mobileUrl = `${baseUrl}/mobile_phone`;
 
-  if (!baseUrl) return res.status(500).json({ error: 'INGEST_URL not set' });
+  if (!baseUrl) return res.status(500).json({ error: 'SEND_TO_URL not set' });
 
   const results: { device: string; ok: boolean; status: number }[] = [];
 
