@@ -1,6 +1,6 @@
 {
-  "buildCommand": "",
   "outputDirectory": "public",
+  "installCommand": "npm install",
   "functions": {
     "api/simulate.ts": {
       "maxDuration": 30
