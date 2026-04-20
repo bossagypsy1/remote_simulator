@@ -1,0 +1,25 @@
+{
+  "name": "remote-simulator",
+  "version": "1.0.0",
+  "description": "Environmental device simulator for ingestion API testing",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "server": "ts-node src/server/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:server": "node dist/server/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@vercel/node": "^5.7.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
