@@ -3,7 +3,7 @@
   "installCommand": "npm install",
   "functions": {
     "api/simulate.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     },
     "api/last-run.ts": {
       "maxDuration": 10
