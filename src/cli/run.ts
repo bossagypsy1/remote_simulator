@@ -1,8 +1,10 @@
 import 'dotenv/config';
 import { devices, getDevice } from '../devices/registry';
 import { phone } from '../devices/phone';
+import { fuelDevices } from '../devices/fuel_registry';
 import { generateEnvironmentalPayload } from '../payloads/environmental';
 import { generatePhonePayload } from '../payloads/mobile_phone';
+import { generateFuelPayload } from '../payloads/fuel_monitor';
 import { sendPayload } from '../api/client';
 
 // Fixed for the lifetime of this process run
@@ -122,6 +124,50 @@ async function pushEnvironmental(
   }
 }
 
+// ── Push: fuel monitor ───────────────────────────────────────────────────────
+
+async function pushFuel(
+  deviceId: string,
+  opts: CliOptions,
+  ingestUrl: string,
+  baseUrl: string,
+): Promise<void> {
+  const device = fuelDevices.find((d) => d.deviceId === deviceId);
+  if (!device) {
+    console.error(`Unknown fuel device: ${deviceId}`);
+    return;
+  }
+
+  const msgId   = nextMessageId(deviceId);
+  const payload = generateFuelPayload(device, msgId);
+  const ts      = localTimestamp();
+
+  if (opts.dryRun) {
+    console.log(`[${ts}] ${deviceId} messageId=${msgId} DRY RUN — payload:`);
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  console.log(`[${ts}] [${baseUrl}] ${deviceId} messageId=${msgId} sending...`);
+  if (opts.verbose) console.log(JSON.stringify(payload, null, 2));
+
+  try {
+    const result    = await sendPayload(ingestUrl, payload, 'local-cli');
+    const statusStr = `${result.status} ${result.statusText}`;
+    if (result.ok) {
+      console.log(`[${localTimestamp()}] [${baseUrl}] ${deviceId} messageId=${msgId} sent ${payload.payload.length} readings -> ${statusStr}`);
+      if (opts.verbose) console.log(`       Response: ${result.body}`);
+    } else {
+      const bodyPreview = result.body.trimStart().startsWith('<')
+        ? '(HTML response — likely auth/proxy page)'
+        : result.body.slice(0, 120);
+      console.error(`[${localTimestamp()}] [${baseUrl}] ${deviceId} messageId=${msgId} -> ERROR ${statusStr}: ${bodyPreview}`);
+    }
+  } catch (err) {
+    console.error(`[${localTimestamp()}] [${baseUrl}] ${deviceId} messageId=${msgId} -> ERROR ${formatError(err)}`);
+  }
+}
+
 // ── Push: phone device ───────────────────────────────────────────────────────
 
 async function pushPhone(opts: CliOptions, mobileUrl: string, baseUrl: string): Promise<void> {
@@ -158,11 +204,16 @@ async function pushPhone(opts: CliOptions, mobileUrl: string, baseUrl: string): 
 
 // ── Main entry point ─────────────────────────────────────────────────────────
 
-type DeviceEntry = { id: string; type: 'miketron-device' | 'phone' };
+type DeviceEntry = { id: string; type: 'miketron-device' | 'fuel' | 'phone' };
 
-const allEnvDevices: DeviceEntry[] = devices.map((d) => ({ id: d.deviceId, type: 'miketron-device' }));
-const phoneEntry: DeviceEntry      = { id: phone.deviceId, type: 'phone' };
-const allDeviceIds                 = [...devices.map((d) => d.deviceId), phone.deviceId];
+const allEnvDevices:  DeviceEntry[] = devices.map((d)     => ({ id: d.deviceId, type: 'miketron-device' }));
+const allFuelDevices: DeviceEntry[] = fuelDevices.map((d) => ({ id: d.deviceId, type: 'fuel' }));
+const phoneEntry:     DeviceEntry   = { id: phone.deviceId, type: 'phone' };
+const allDeviceIds                  = [
+  ...devices.map((d) => d.deviceId),
+  ...fuelDevices.map((d) => d.deviceId),
+  phone.deviceId,
+];
 
 export async function run(): Promise<void> {
   const opts      = parseArgs();
@@ -174,15 +225,16 @@ export async function run(): Promise<void> {
   let targetDevices: DeviceEntry[];
 
   if (opts.all) {
-    targetDevices = [...allEnvDevices, phoneEntry];
+    targetDevices = [...allEnvDevices, ...allFuelDevices, phoneEntry];
   } else if (opts.device === phone.deviceId) {
     targetDevices = [phoneEntry];
   } else if (opts.device) {
-    if (!getDevice(opts.device)) {
+    const isFuel = fuelDevices.some((d) => d.deviceId === opts.device);
+    if (!isFuel && !getDevice(opts.device)) {
       console.error(`Error: unknown device "${opts.device}". Valid IDs: ${allDeviceIds.join(', ')}`);
       process.exit(1);
     }
-    targetDevices = [{ id: opts.device, type: 'miketron-device' }];
+    targetDevices = [{ id: opts.device, type: isFuel ? 'fuel' : 'miketron-device' }];
   } else {
     console.error(`Error: specify --device <id> or --all. Valid IDs: ${allDeviceIds.join(', ')}`);
     process.exit(1);
@@ -215,6 +267,8 @@ export async function run(): Promise<void> {
     for (const dev of targetDevices) {
       if (dev.type === 'phone') {
         await pushPhone(opts, mobileUrl, baseUrl);
+      } else if (dev.type === 'fuel') {
+        await pushFuel(dev.id, opts, ingestUrl, baseUrl);
       } else {
         await pushEnvironmental(dev.id, opts, ingestUrl, baseUrl);
       }

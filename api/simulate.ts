@@ -1,8 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { devices } from '../src/devices/registry';
 import { phone } from '../src/devices/phone';
+import { fuelDevices } from '../src/devices/fuel_registry';
 import { generateEnvironmentalPayload } from '../src/payloads/environmental';
 import { generatePhonePayload } from '../src/payloads/mobile_phone';
+import { generateFuelPayload } from '../src/payloads/fuel_monitor';
 import { sendPayload } from '../src/api/client';
 
 const SESSION_ID  = `cron-${phone.deviceId}`;
@@ -24,6 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   for (const device of devices) {
     const payload = generateEnvironmentalPayload(device, nextId(device.deviceId));
+    const result  = await sendPayload(ingestUrl, payload, 'vercel-cron');
+    results.push({ device: device.deviceId, ok: result.ok, status: result.status });
+  }
+
+  for (const device of fuelDevices) {
+    const payload = generateFuelPayload(device, nextId(device.deviceId));
     const result  = await sendPayload(ingestUrl, payload, 'vercel-cron');
     results.push({ device: device.deviceId, ok: result.ok, status: result.status });
   }
