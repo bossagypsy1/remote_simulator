@@ -18,6 +18,4 @@ jobs:
       - run: npm install
 
       - name: Send one round of payloads
-        run: npx ts-node src/index.ts --all --count 1
-        env:
-          SEND_TO_URL: https://remote-sensor-phone.vercel.app
+        run: npx ts-node src/index.ts --all --count 1 --dry-run
