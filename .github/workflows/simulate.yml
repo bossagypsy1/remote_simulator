@@ -20,4 +20,4 @@ jobs:
       - name: Send one round of payloads
         run: npx ts-node src/index.ts --all --count 1
         env:
-          INGEST_URL: ${{ secrets.INGEST_URL }}
+          SEND_TO_URL: ${{ secrets.SEND_TO_URL }}
