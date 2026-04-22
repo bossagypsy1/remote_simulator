@@ -7,15 +7,17 @@ import { generatePhonePayload } from '../src/payloads/mobile_phone';
 import { generateFuelPayload } from '../src/payloads/fuel_monitor';
 import { sendPayload } from '../src/api/client';
 
-const ROUNDS        = 4;
-const INTERVAL_MS   = 15_000;
+// 4 rounds staggered 13s apart — all fire in parallel so total wall time ~42s (fits in 60s)
+const ROUNDS      = 4;
+const INTERVAL_MS = 13_000;
 
-const SESSION_ID  = `cron-${phone.deviceId}`;
+const SESSION_ID = `cron-${phone.deviceId}`;
 const messageIds: Record<string, number> = {};
 function nextId(id: string) { return (messageIds[id] = (messageIds[id] ?? 0) + 1); }
-function sleep(ms: number)  { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms: number)  { return new Promise<void>(r => setTimeout(r, ms)); }
 
-async function runRound(ingestUrl: string, mobileUrl: string) {
+async function runRound(ingestUrl: string, mobileUrl: string, delayMs: number) {
+  await sleep(delayMs);
   return Promise.all([
     ...devices.map(async (device) => {
       const payload = generateEnvironmentalPayload(device, nextId(device.deviceId));
@@ -46,13 +48,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!baseUrl) return res.status(500).json({ error: 'SEND_TO_URL not set' });
 
-  const allResults: { round: number; device: string; ok: boolean; status: number }[] = [];
+  // Launch all rounds simultaneously with staggered delays
+  const roundArrays = await Promise.all(
+    Array.from({ length: ROUNDS }, (_, i) => runRound(ingestUrl, mobileUrl, i * INTERVAL_MS))
+  );
 
-  for (let round = 1; round <= ROUNDS; round++) {
-    const roundResults = await runRound(ingestUrl, mobileUrl);
-    allResults.push(...roundResults.map(r => ({ round, ...r })));
-    if (round < ROUNDS) await sleep(INTERVAL_MS);
-  }
+  const allResults = roundArrays.flatMap((results, i) =>
+    results.map(r => ({ round: i + 1, ...r }))
+  );
 
   const succeeded = allResults.filter(r => r.ok).length;
   return res.status(200).json({ ok: true, rounds: ROUNDS, sent: allResults.length, succeeded, results: allResults });
