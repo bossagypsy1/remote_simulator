@@ -1,8 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  const sendTo = (process.env.SEND_TO_URL ?? '').replace(/\/$/, '');
-  if (!sendTo) return res.status(500).json({ error: 'SEND_TO_URL not set' });
+  const sendTo = (process.env.SEND_TO_URL ?? 'https://remote-sensor-phone.vercel.app').replace(/\/$/, '');
 
   // Derive dashboard base from the ingest URL
   // e.g. https://remote-sensor-phone.vercel.app/api/ingest/miketron-device
