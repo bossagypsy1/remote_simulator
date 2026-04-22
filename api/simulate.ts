@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const baseUrl   = (process.env.SEND_TO_URL ?? 'https://remote-sensor-phone.vercel.app').replace(/\/$/, '').replace(/\/(miketron-device|mobile_phone)$/, '');
+  const baseUrl   = (process.env.SEND_TO_URL ?? 'https://remote-sensor-phone.vercel.app/api/ingest').replace(/\/$/, '').replace(/\/(miketron-device|mobile_phone)$/, '');
   const ingestUrl = `${baseUrl}/miketron-device`;
   const mobileUrl = `${baseUrl}/mobile_phone`;
 
