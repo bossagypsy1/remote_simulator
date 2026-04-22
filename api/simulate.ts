@@ -22,22 +22,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!baseUrl) return res.status(500).json({ error: 'SEND_TO_URL not set' });
 
-  // Respond immediately so cron-job.org gets 200 — sends run in background
-  const total = devices.length + fuelDevices.length + 1;
-  res.status(200).json({ ok: true, sent: total, note: 'firing in background' });
-
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     ...devices.map(async (device) => {
       const payload = generateEnvironmentalPayload(device, nextId(device.deviceId));
-      await sendPayload(ingestUrl, payload, 'vercel-cron');
+      const result  = await sendPayload(ingestUrl, payload, 'vercel-cron');
+      return { device: device.deviceId, ok: result.ok, status: result.status };
     }),
     ...fuelDevices.map(async (device) => {
       const payload = generateFuelPayload(device, nextId(device.deviceId));
-      await sendPayload(ingestUrl, payload, 'vercel-cron');
+      const result  = await sendPayload(ingestUrl, payload, 'vercel-cron');
+      return { device: device.deviceId, ok: result.ok, status: result.status };
     }),
     (async () => {
       const payload = generatePhonePayload(phone, nextId(phone.deviceId), SESSION_ID);
-      await sendPayload(mobileUrl, payload, 'vercel-cron');
+      const result  = await sendPayload(mobileUrl, payload, 'vercel-cron');
+      return { device: phone.deviceId, ok: result.ok, status: result.status };
     })(),
   ]);
+
+  const settled = results.map(r => r.status === 'fulfilled' ? r.value : { device: 'unknown', ok: false, status: 0 });
+  const succeeded = settled.filter(r => r.ok).length;
+  return res.status(200).json({ ok: true, sent: settled.length, succeeded, results: settled });
 }
