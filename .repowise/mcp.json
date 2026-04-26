@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "neon": {
-      "type": "http",
-      "url": "https://mcp.neon.tech/mcp"
-    },
     "repowise": {
       "command": "repowise",
       "args": [
