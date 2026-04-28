@@ -9,6 +9,7 @@
     body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #333; padding: 32px; }
     h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
     p.sub { font-size: 0.8rem; color: #888; margin-bottom: 24px; }
+    .reminder { max-width: 780px; margin: -8px 0 16px; padding: 8px 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; border-radius: 6px; font-size: 0.75rem; }
     .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; max-width: 780px; margin-bottom: 16px; }
     .card-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
     .card-header span { font-size: 0.8rem; font-weight: 500; color: #555; }
@@ -55,6 +56,7 @@
 <body>
   <h1>Remote Simulator</h1>
   <p class="sub">Generates mock sensor data and sends to the ingest server</p>
+  <div class="reminder">Hardening reminder: add HTTPS-only ingest and per-device or simulator API secrets before production use.</div>
 
   <div class="card">
     <div class="card-header">
