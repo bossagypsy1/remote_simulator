@@ -53,7 +53,8 @@
     #map { height: 360px; width: 100%; background: #eef2f7; }
     .map-legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 0.72rem; color: #6b7280; padding: 10px 16px; border-top: 1px solid #f0f0f0; }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-    .marker-dot { width: 14px; height: 14px; border: 2px solid white; border-radius: 999px; box-shadow: 0 1px 5px rgba(0,0,0,.35); }
+    .sim-marker-icon { background: transparent; border: 0; }
+    .marker-dot { display: block; width: 16px; height: 16px; border: 2px solid white; border-radius: 999px; box-shadow: 0 1px 5px rgba(0,0,0,.35); }
     .marker-env { background: #2563eb; }
     .marker-rotterdam { background: #ea580c; }
     .marker-bordeaux { background: #16a34a; }
@@ -178,10 +179,10 @@
         const meta = DEVICE_META[id];
         if (!meta) continue;
         const icon = L.divIcon({
-          className: '',
-          html: `<span class="marker-dot ${meta.cls}"></span>`,
-          iconSize: [14, 14],
-          iconAnchor: [7, 7],
+          className: 'sim-marker-icon',
+          html: `<div class="marker-dot ${meta.cls}"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
         });
         L.marker([meta.lat, meta.lon], { icon })
           .bindPopup(`<div class="map-popup"><strong>${id}</strong>${meta.label}<br>${meta.group}</div>`)
