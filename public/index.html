@@ -6,6 +6,8 @@
   <title>Remote Simulator</title>
   <link rel="icon" href="/favicon.ico" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #333; padding: 32px; }
@@ -62,6 +64,28 @@
     .marker-phone { background: #0891b2; }
     .map-popup { font-size: 0.75rem; line-height: 1.35; }
     .map-popup strong { display: block; color: #111827; margin-bottom: 2px; }
+    .map-popup .popup-meta { color: #6b7280; font-size: 0.7rem; margin-bottom: 6px; }
+    .map-popup .popup-reading { margin-top: 6px; color: #374151; }
+    .map-popup .popup-reading .chips { margin-top: 4px; }
+    .map-popup .popup-time { margin-top: 6px; color: #9ca3af; font-size: 0.68rem; font-family: monospace; }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+      background-clip: padding-box;
+      border-radius: 999px;
+    }
+    .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+      width: 30px;
+      height: 30px;
+      margin-left: 5px;
+      margin-top: 5px;
+      text-align: center;
+      border-radius: 999px;
+      font: 600 12px/30px system-ui, sans-serif;
+      color: white;
+      background: rgba(37, 99, 235, 0.85);
+    }
+    .marker-cluster-small { background: rgba(37, 99, 235, 0.2); }
+    .marker-cluster-medium { background: rgba(234, 88, 12, 0.2); }
+    .marker-cluster-large { background: rgba(22, 163, 74, 0.2); }
 
     .flash { animation: flashbg 1.4s ease-out; }
     @keyframes flashbg { 0% { background: #f0fdf4; } 100% { background: white; } }
@@ -133,6 +157,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
     const DEVICE_META = {
       'env-001': { lat: 53.3317, lon: -3.0592, label: 'Wirral Sensor 1', group: 'Wirral env', cls: 'marker-env' },
@@ -160,6 +185,8 @@
       'phone-001'
     ];
 
+    const DEVICE_MARKERS = {};
+
     const TARGETS = {
       current: 'https://remote-sensor-phone.vercel.app',
       smartranger: 'https://smartranger.com',
@@ -176,6 +203,9 @@
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
+      const clusterLayer = typeof L.markerClusterGroup === 'function'
+        ? L.markerClusterGroup()
+        : L.featureGroup();
       const bounds = [];
       for (const id of DEVICES) {
         const meta = DEVICE_META[id];
@@ -186,11 +216,14 @@
           iconSize: [16, 16],
           iconAnchor: [8, 8],
         });
-        L.marker([meta.lat, meta.lon], { icon })
-          .bindPopup(`<div class="map-popup"><strong>${id}</strong>${meta.label}<br>${meta.group}</div>`)
-          .addTo(map);
+        const marker = L.marker([meta.lat, meta.lon], { icon });
+        marker.bindPopup(buildPopupContent(id, null, null));
+        marker.addTo(clusterLayer);
+        DEVICE_MARKERS[id] = marker;
         bounds.push([meta.lat, meta.lon]);
       }
+
+      clusterLayer.addTo(map);
 
       if (bounds.length > 0) {
         map.fitBounds(bounds, { padding: [28, 28] });
@@ -284,6 +317,46 @@
       return `<div class="chips">${chips.join('')}</div>`;
     }
 
+    function summarizeLatestReading(readings) {
+      if (!readings || readings.length === 0) return 'No reading sent yet';
+      const last = readings[readings.length - 1];
+      const label = RENAME[last.name] ?? last.name.split('.').pop().slice(0, 8);
+      const value = last.name === 'battery.batteryLevel'
+        ? (last.value * 100).toFixed(0) + '%'
+        : fmtVal(last.value);
+      return `${label}: ${value}`;
+    }
+
+    function buildPopupContent(dev, readings, timestamp) {
+      const meta = DEVICE_META[dev] || {};
+      const company = meta.group ?? '—';
+      const location = meta.label ?? '—';
+      const readingHtml = readings && readings.length
+        ? buildChips(readings)
+        : '<span style="color:#9ca3af">No reading sent yet</span>';
+      const timeHtml = timestamp ? new Date(timestamp).toLocaleTimeString() : '—';
+      return `
+        <div class="map-popup">
+          <strong>${dev}</strong>
+          <div class="popup-meta">${company}<br>${location}</div>
+          <div class="popup-reading">
+            <div>Last reading sent</div>
+            <div>${readingHtml}</div>
+            <div style="margin-top:4px;color:#6b7280">${summarizeLatestReading(readings)}</div>
+          </div>
+          <div class="popup-time">${timeHtml}</div>
+        </div>
+      `;
+    }
+
+    function updateMapPopups(results, timestamp) {
+      for (const result of results || []) {
+        const marker = DEVICE_MARKERS[result.device];
+        if (!marker) continue;
+        marker.setPopupContent(buildPopupContent(result.device, result.readings, timestamp));
+      }
+    }
+
     function getDeviceCompany(dev) {
       return DEVICE_META[dev]?.group ?? '—';
     }
@@ -338,6 +411,7 @@
         const data = await res.json();
         const results = data.results ?? [];
         renderResults(results, data.timestamp);
+        updateMapPopups(results, data.timestamp);
 
         const ok    = results.filter(r => r.ok).length;
         const total = results.length;
