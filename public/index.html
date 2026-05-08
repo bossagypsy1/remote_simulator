@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Remote Simulator</title>
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #333; padding: 32px; }
@@ -48,6 +50,17 @@
     button { font-size: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #93c5fd; cursor: default; }
+    #map { height: 360px; width: 100%; background: #eef2f7; }
+    .map-legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 0.72rem; color: #6b7280; padding: 10px 16px; border-top: 1px solid #f0f0f0; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .marker-dot { width: 14px; height: 14px; border: 2px solid white; border-radius: 999px; box-shadow: 0 1px 5px rgba(0,0,0,.35); }
+    .marker-env { background: #2563eb; }
+    .marker-rotterdam { background: #ea580c; }
+    .marker-bordeaux { background: #16a34a; }
+    .marker-fuel { background: #7c3aed; }
+    .marker-phone { background: #0891b2; }
+    .map-popup { font-size: 0.75rem; line-height: 1.35; }
+    .map-popup strong { display: block; color: #111827; margin-bottom: 2px; }
 
     .flash { animation: flashbg 1.4s ease-out; }
     @keyframes flashbg { 0% { background: #f0fdf4; } 100% { background: white; } }
@@ -57,6 +70,21 @@
   <h1>Remote Simulator</h1>
   <p class="sub">Generates mock sensor data and sends to the ingest server</p>
   <div class="reminder">Hardening reminder: add HTTPS-only ingest and per-device or simulator API secrets before production use.</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Simulator Map</span>
+      <span id="map-count"></span>
+    </div>
+    <div id="map"></div>
+    <div class="map-legend">
+      <span><span class="legend-dot marker-env"></span>Wirral env</span>
+      <span><span class="legend-dot marker-rotterdam"></span>Rotterdam factory</span>
+      <span><span class="legend-dot marker-bordeaux"></span>Bordeaux factory</span>
+      <span><span class="legend-dot marker-fuel"></span>Fuel</span>
+      <span><span class="legend-dot marker-phone"></span>Phone</span>
+    </div>
+  </div>
 
   <div class="card">
     <div class="card-header">
@@ -101,9 +129,30 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    const DEVICE_META = {
+      'env-001': { lat: 53.3317, lon: -3.0592, label: 'Wirral Sensor 1', group: 'Wirral env', cls: 'marker-env' },
+      'env-002': { lat: 53.3340, lon: -3.0650, label: 'Wirral Sensor 2', group: 'Wirral env', cls: 'marker-env' },
+      'env-003': { lat: 53.3290, lon: -3.0530, label: 'Wirral Sensor 3', group: 'Wirral env', cls: 'marker-env' },
+      'env-004': { lat: 53.3360, lon: -3.0710, label: 'Wirral Sensor 4', group: 'Wirral env', cls: 'marker-env' },
+      'env-005': { lat: 53.3270, lon: -3.0480, label: 'Wirral Sensor 5', group: 'Wirral env', cls: 'marker-env' },
+      'env-006': { lat: 53.3380, lon: -3.0560, label: 'Wirral Sensor 6', group: 'Wirral env', cls: 'marker-env' },
+      'rtm-001': { lat: 51.9475, lon: 4.1521, label: 'Assembly Line North', group: 'MaasFab Rotterdam', cls: 'marker-rotterdam' },
+      'rtm-002': { lat: 51.9468, lon: 4.1540, label: 'Paint Booth', group: 'MaasFab Rotterdam', cls: 'marker-rotterdam' },
+      'rtm-003': { lat: 51.9484, lon: 4.1506, label: 'Compressor Room', group: 'MaasFab Rotterdam', cls: 'marker-rotterdam' },
+      'bdx-001': { lat: 44.8549, lon: -0.5567, label: 'Process Hall', group: 'Garonne Components', cls: 'marker-bordeaux' },
+      'bdx-002': { lat: 44.8535, lon: -0.5583, label: 'Packaging Line', group: 'Garonne Components', cls: 'marker-bordeaux' },
+      'bdx-003': { lat: 44.8562, lon: -0.5548, label: 'Cold Store', group: 'Garonne Components', cls: 'marker-bordeaux' },
+      'fuel-001': { lat: 53.3811, lon: -1.4701, label: 'Sheffield Depot', group: 'Fuel', cls: 'marker-fuel' },
+      'fuel-002': { lat: 51.4545, lon: -2.5879, label: 'Bristol Storage', group: 'Fuel', cls: 'marker-fuel' },
+      'fuel-003': { lat: 52.6309, lon: 1.2974, label: 'Norwich Site', group: 'Fuel', cls: 'marker-fuel' },
+      'phone-001': { lat: 53.3325, lon: -3.0630, label: 'Test Phone', group: 'Phone', cls: 'marker-phone' },
+    };
+
     const DEVICES = [
       'env-001','env-002','env-003','env-004','env-005','env-006',
+      'rtm-001','rtm-002','rtm-003','bdx-001','bdx-002','bdx-003',
       'fuel-001','fuel-002','fuel-003',
       'phone-001'
     ];
@@ -112,6 +161,38 @@
       current: 'https://remote-sensor-phone.vercel.app',
       smartranger: 'https://smartranger.com',
     };
+
+    function initMap() {
+      const count = document.getElementById('map-count');
+      if (count) count.textContent = `${DEVICES.length} devices`;
+      if (typeof L === 'undefined') return;
+
+      const map = L.map('map', { scrollWheelZoom: false });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+
+      const bounds = [];
+      for (const id of DEVICES) {
+        const meta = DEVICE_META[id];
+        if (!meta) continue;
+        const icon = L.divIcon({
+          className: '',
+          html: `<span class="marker-dot ${meta.cls}"></span>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+        });
+        L.marker([meta.lat, meta.lon], { icon })
+          .bindPopup(`<div class="map-popup"><strong>${id}</strong>${meta.label}<br>${meta.group}</div>`)
+          .addTo(map);
+        bounds.push([meta.lat, meta.lon]);
+      }
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [28, 28] });
+      }
+    }
 
     function normalizedTargetBase() {
       const select = document.getElementById('target-select');
@@ -155,6 +236,10 @@
     const RENAME = {
       latitude: 'lat', longitude: 'lon',
       temperature: 'temp', humidity: 'hum', pressure: 'pres', acidity: 'pH',
+      vibration: 'vib', motor_temperature: 'motor', power_draw: 'kW',
+      air_quality_voc: 'VOC', particulate_matter: 'PM',
+      line_pressure: 'line', noise_level: 'dB',
+      co2_level: 'CO2', cold_room_temperature: 'cold', coolant_temperature: 'coolant',
       tank_level: 'level', tank_temperature: 'temp', tank_pressure: 'pres',
       'location.latitude': 'lat', 'location.longitude': 'lon',
       'location.speed': 'spd', 'location.bearing': 'hdg',
@@ -271,6 +356,7 @@
 
     renderWaiting();
     syncTargetControls();
+    initMap();
   </script>
 </body>
 </html>

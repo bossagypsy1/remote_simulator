@@ -28,6 +28,16 @@ export const ENV_SCALING = {
   pressure:    { signalMin: 4, signalMax: 20, valueMin:  950, valueMax: 1060  }, // hPa
   humidity:    { signalMin: 4, signalMax: 20, valueMin:  0,   valueMax: 100   }, // %
   acidity:     { signalMin: 4, signalMax: 20, valueMin:  0,   valueMax: 14    }, // pH
+  vibration:   { signalMin: 4, signalMax: 20, valueMin:  0,   valueMax: 50    }, // mm/s
+  motor_temperature: { signalMin: 4, signalMax: 20, valueMin: 0, valueMax: 120 }, // C
+  power_draw:  { signalMin: 4, signalMax: 20, valueMin:  0,   valueMax: 500   }, // kW
+  air_quality_voc: { signalMin: 4, signalMax: 20, valueMin: 0, valueMax: 2000 }, // ppm
+  particulate_matter: { signalMin: 4, signalMax: 20, valueMin: 0, valueMax: 500 }, // ug/m3
+  line_pressure: { signalMin: 4, signalMax: 20, valueMin: 0, valueMax: 16 }, // bar
+  noise_level: { signalMin: 4, signalMax: 20, valueMin: 40, valueMax: 120 }, // dB
+  co2_level: { signalMin: 4, signalMax: 20, valueMin: 350, valueMax: 5000 }, // ppm
+  cold_room_temperature: { signalMin: 4, signalMax: 20, valueMin: -30, valueMax: 20 }, // C
+  coolant_temperature: { signalMin: 4, signalMax: 20, valueMin: -10, valueMax: 80 }, // C
 } satisfies Record<string, ScalingConfig>;
 
 // ── Fuel Monitor (FM-100) — 4-20 mA ─────────────────────────────────────────

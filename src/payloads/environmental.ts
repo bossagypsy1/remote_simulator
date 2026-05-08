@@ -1,4 +1,4 @@
-import { DeviceConfig } from '../devices/registry';
+import { DeviceConfig, DeviceSensorConfig } from '../devices/registry';
 import { toRaw, ENV_SCALING } from '../utils/scaling';
 
 export interface SensorReading {
@@ -14,26 +14,32 @@ export interface DevicePayload {
   payload: SensorReading[];
 }
 
-// Per-device state: drift in engineering units, then convert to raw mA before sending
 interface DeviceState {
-  temperature: number;  // °C
-  pressure:    number;  // hPa
-  humidity:    number;  // %
-  acidity:     number;  // pH
+  values: Record<string, number>;
 }
+
+const DEFAULT_ENV_SENSORS: DeviceSensorConfig[] = [
+  { sensorLocalId: 3, name: 'temperature', initial: 16, step: 0.3, min: 10, max: 22, decimals: 2 },
+  { sensorLocalId: 4, name: 'pressure', initial: 1013, step: 0.5, min: 1000, max: 1025, decimals: 2 },
+  { sensorLocalId: 5, name: 'humidity', initial: 70, step: 1, min: 50, max: 90, decimals: 2 },
+  { sensorLocalId: 6, name: 'acidity', initial: 7.5, step: 0.05, min: 6.5, max: 8.5, decimals: 3 },
+];
 
 const deviceStates = new Map<string, DeviceState>();
 
-function getState(deviceId: string): DeviceState {
-  if (!deviceStates.has(deviceId)) {
-    deviceStates.set(deviceId, {
-      temperature: 16 + (Math.random() * 4  - 2),
-      pressure:    1013 + (Math.random() * 6 - 3),
-      humidity:    70  + (Math.random() * 10 - 5),
-      acidity:     7.5 + (Math.random() * 0.4 - 0.2),
-    });
+function getSensorConfig(device: DeviceConfig): DeviceSensorConfig[] {
+  return device.sensors ?? DEFAULT_ENV_SENSORS;
+}
+
+function getState(device: DeviceConfig): DeviceState {
+  if (!deviceStates.has(device.deviceId)) {
+    const values: Record<string, number> = {};
+    for (const sensor of getSensorConfig(device)) {
+      values[sensor.name] = sensor.initial + (Math.random() * 2 - 1) * sensor.step;
+    }
+    deviceStates.set(device.deviceId, { values });
   }
-  return deviceStates.get(deviceId)!;
+  return deviceStates.get(device.deviceId)!;
 }
 
 function drift(current: number, maxStep: number, min: number, max: number): number {
@@ -53,35 +59,35 @@ export function generateEnvironmentalPayload(
   device: DeviceConfig,
   messageId: number,
 ): DevicePayload {
-  const state = getState(device.deviceId);
+  const state = getState(device);
+  const sensors = getSensorConfig(device);
 
-  // Drift engineering values
-  state.temperature = drift(state.temperature, 0.3, 10,  22);
-  state.pressure    = drift(state.pressure,    0.5, 1000, 1025);
-  state.humidity    = drift(state.humidity,    1.0, 50,  90);
-  state.acidity     = drift(state.acidity,     0.05, 6.5, 8.5);
-
-  // GPS stays as already-scaled values (no conversion)
   const lat = round(jitter(device.baseLat, 0.001), 6);
   const lon = round(jitter(device.baseLon, 0.001), 6);
 
-  // Convert engineering values → raw 4-20 mA signals
-  const rawTemp     = round(toRaw(state.temperature, ENV_SCALING.temperature), 4);
-  const rawPressure = round(toRaw(state.pressure,    ENV_SCALING.pressure),    4);
-  const rawHumidity = round(toRaw(state.humidity,    ENV_SCALING.humidity),    4);
-  const rawAcidity  = round(toRaw(state.acidity,     ENV_SCALING.acidity),     4);
+  const sensorReadings = sensors.map((sensor) => {
+    state.values[sensor.name] = drift(
+      state.values[sensor.name] ?? sensor.initial,
+      sensor.step,
+      sensor.min,
+      sensor.max,
+    );
+    const scaling = ENV_SCALING[sensor.name as keyof typeof ENV_SCALING];
+    return {
+      sensorLocalId: sensor.sensorLocalId,
+      name: sensor.name,
+      value: round(toRaw(state.values[sensor.name], scaling), 4),
+    };
+  });
 
   return {
-    deviceId:  device.deviceId,
+    deviceId: device.deviceId,
     messageId,
     timestamp: new Date().toISOString(),
     payload: [
-      { sensorLocalId: 1, name: 'latitude',    value: lat },           // already scaled — GPS
-      { sensorLocalId: 2, name: 'longitude',   value: lon },           // already scaled — GPS
-      { sensorLocalId: 3, name: 'temperature', value: rawTemp },       // mA
-      { sensorLocalId: 4, name: 'pressure',    value: rawPressure },   // mA
-      { sensorLocalId: 5, name: 'humidity',    value: rawHumidity },   // mA
-      { sensorLocalId: 6, name: 'acidity',     value: rawAcidity },    // mA
+      { sensorLocalId: 1, name: 'latitude', value: lat },
+      { sensorLocalId: 2, name: 'longitude', value: lon },
+      ...sensorReadings,
     ],
   };
 }
