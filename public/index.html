@@ -115,7 +115,9 @@
     <table>
       <thead>
         <tr>
-          <th>Device</th>
+                    <th>Device</th>
+          <th>Company</th>
+          <th>Location</th>
           <th>Generated readings</th>
           <th>Result</th>
           <th class="right">Sent</th>
@@ -282,10 +284,20 @@
       return `<div class="chips">${chips.join('')}</div>`;
     }
 
+    function getDeviceCompany(dev) {
+      return DEVICE_META[dev]?.group ?? '—';
+    }
+
+    function getDeviceLocation(dev) {
+      return DEVICE_META[dev]?.label ?? '—';
+    }
+
     function renderWaiting() {
       document.getElementById('rows').innerHTML = DEVICES.map(d => `
         <tr>
           <td class="dev">${d}</td>
+          <td>${getDeviceCompany(d)}</td>
+          <td>${getDeviceLocation(d)}</td>
           <td><span style="color:#d1d5db;font-size:0.7rem">waiting…</span></td>
           <td><span class="badge wait">—</span></td>
           <td class="time-col">—</td>
@@ -300,11 +312,13 @@
 
       document.getElementById('rows').innerHTML = DEVICES.map(dev => {
         const r = byDev[dev];
-        if (!r) return `<tr><td class="dev">${dev}</td><td>—</td><td><span class="badge wait">—</span></td><td class="time-col">—</td></tr>`;
+        if (!r) return `<tr><td class="dev">${dev}</td><td>${getDeviceCompany(dev)}</td><td>${getDeviceLocation(dev)}</td><td>—</td><td><span class="badge wait">—</span></td><td class="time-col">—</td></tr>`;
         return `<tr class="flash">
           <td class="dev">${dev}</td>
+          <td>${getDeviceCompany(dev)}</td>
+          <td>${getDeviceLocation(dev)}</td>
           <td>${buildChips(r.readings)}</td>
-          <td><span class="badge ${r.ok ? 'ok' : 'error'}">${r.ok ? '✓ ' + r.status : '✗ ' + r.status}</span></td>
+          <td><span class="badge ${r.ok ? 'ok' : 'error'}">${r.ok ? 'OK ' + r.status : 'ERR ' + r.status}</span></td>
           <td class="time-col">${time}</td>
         </tr>`;
       }).join('');
