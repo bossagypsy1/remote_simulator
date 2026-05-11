@@ -73,10 +73,14 @@ export function generateEnvironmentalPayload(
       sensor.max,
     );
     const scaling = ENV_SCALING[sensor.name as keyof typeof ENV_SCALING];
+    // If a 4-20 mA scaling config exists, convert to raw signal; otherwise send engineering value directly
+    const value = scaling
+      ? round(toRaw(state.values[sensor.name], scaling), 4)
+      : round(state.values[sensor.name], sensor.decimals);
     return {
       sensorLocalId: sensor.sensorLocalId,
       name: sensor.name,
-      value: round(toRaw(state.values[sensor.name], scaling), 4),
+      value,
     };
   });
 
